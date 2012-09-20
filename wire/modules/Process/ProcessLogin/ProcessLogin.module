@@ -106,7 +106,7 @@ class ProcessLogin extends Process {
 
 	}
 
-	protected function buildLoginForm() {
+	protected function ___buildLoginForm() {
 
 		$this->nameField = $this->modules->get('InputfieldText');
 		$this->nameField->set('label', $this->_('Username')); // Login form: username field label
@@ -132,18 +132,21 @@ class ProcessLogin extends Process {
 		$this->form->add($this->nameField); 
 		$this->form->add($this->passField); 
 		$this->form->add($this->submitField); 
+
+		return $this->form; 
 	}
 
 	/**
 	 * Render the login form
 	 *
 	 */
-	protected function renderLoginForm() {
+	protected function ___renderLoginForm() {
 		if(isset($_GET['login'])) {
 			$this->afterLoginRedirect();
 		} else {
 			// note the space after 'Login ' is intentional to separate it from the Login button for translation purposes
 			$this->setFuel('processHeadline', $this->_('Login ')); // Headline for login form page
+			$this->passField->attr('value', '');
 			$out = $this->form->render();
 			$links = '';
 			if($this->allowForgot) {

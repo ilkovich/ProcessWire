@@ -6,7 +6,7 @@
  * Base class for Inputfield modules. 
  * 
  * ProcessWire 2.x 
- * Copyright (C) 2010 by Ryan Cramer 
+ * Copyright (C) 2012 by Ryan Cramer 
  * Licensed under GNU/GPL v2, see LICENSE.TXT
  * 
  * http://www.processwire.com
@@ -59,6 +59,14 @@ abstract class Inputfield extends WireData implements Module {
 	const collapsedPopulated = 5; 	// will display collapsed only if populated
 
 	/**
+	 * Constants for skipLabel setting
+	 *
+	 */
+	const skipLabelNo = false; 	// don't skip the label at all (default)
+	const skipLabelFor = true; 	// don't use a 'for' attribute with the <label>
+	const skipLabelHeader = 2; 	// don't use a ui-widget-header label at all
+
+	/**
 	 * The total number of Inputfield instances, kept as a way of generating unique 'id' attributes
 	 *
 	 */
@@ -97,7 +105,7 @@ abstract class Inputfield extends WireData implements Module {
 		$this->set('required', 0); 	// set to 1 to make value required for this field
 		$this->set('collapsed', ''); 	// see the collapsed* constants at top of class (use blank string for unset value)
 		$this->set('columnWidth', ''); 	// percent width of the field. blank or 0 = 100.
-		$this->set('skipLabel', false); // if true, tells InputfieldWrapper not to use a "for" attribute with the auto-generated "<label>"
+		$this->set('skipLabel', self::skipLabelNo); // See the skipLabel constants
 
 		// default ID attribute if no 'id' attribute set
 		$this->defaultID = $this->className() . self::$numInstances; 
@@ -444,8 +452,6 @@ abstract class Inputfield extends WireData implements Module {
 			}
 		}
 
-		if($this->required && $this->isEmpty()) $this->error("Missing required value"); 
-
 		if($changed) { 
 			$this->trackChange('value'); 
 
@@ -455,7 +461,6 @@ abstract class Inputfield extends WireData implements Module {
 
 		return $this; 
 	}
-
 
 	/**
 	 * Return true if this field is empty (contains no/blank value), or false if it's not
@@ -470,7 +475,7 @@ abstract class Inputfield extends WireData implements Module {
 		$value = $this->attr('value'); 
 		if(is_array($value) && !count($value)) return true; 
 		if(!strlen("$value")) return true; 
-		if($value === 0) return true; 
+		// if($value === 0) return true; 
 		return false; 
 	}
 
@@ -500,28 +505,28 @@ abstract class Inputfield extends WireData implements Module {
 		if($this->collapsed == Inputfield::collapsedNo) $field->collapsed = Inputfield::collapsedYes;
 		$fields->append($field); 
 
-		if(!$this instanceof InputfieldWrapper) { 
-			$field = $this->modules->get('InputfieldInteger'); 
-			$value = (int) $this->getSetting('columnWidth'); 
-			if($value < 10 || $value >= 100) $value = 100;
-			$field->label = sprintf($this->_("Column Width (%d%%)"), $value);
-			$field->attr('id+name', 'columnWidth'); 
-			$field->attr('maxlength', 4); 
-			$field->attr('size', 4); 
-			$field->attr('value', $value . '%'); 
-			$field->description = $this->_("The percentage width of this field's container (10%-100%). If placed next to other fields with reduced widths, it will create floated columns."); // Description of colWidth option
-			$field->notes = $this->_("Note that not all fields will work at reduced widths, so you should test the result after changing this."); // Notes for colWidth option
-			if(!wire('input')->get('process_template')) if($value == 100) $field->collapsed = Inputfield::collapsedYes; 
-			$fields->append($field); 
-		}
+		$field = $this->modules->get('InputfieldInteger'); 
+		$value = (int) $this->getSetting('columnWidth'); 
+		if($value < 10 || $value >= 100) $value = 100;
+		$field->label = sprintf($this->_("Column Width (%d%%)"), $value);
+		$field->attr('id+name', 'columnWidth'); 
+		$field->attr('type', 'text');
+		$field->attr('maxlength', 4); 
+		$field->attr('size', 4); 
+		$field->attr('max', 100); 
+		$field->attr('value', $value . '%'); 
+		$field->description = $this->_("The percentage width of this field's container (10%-100%). If placed next to other fields with reduced widths, it will create floated columns."); // Description of colWidth option
+		$field->notes = $this->_("Note that not all fields will work at reduced widths, so you should test the result after changing this."); // Notes for colWidth option
+		if(!wire('input')->get('process_template')) if($value == 100) $field->collapsed = Inputfield::collapsedYes; 
+		$fields->append($field); 
 
-		if($this->config->advanced) { 
+		if(!$this instanceof InputfieldWrapper) {
 			$field = $this->modules->get('InputfieldCheckbox'); 
 			$field->label = $this->_('Required?');
 			$field->attr('name', 'required'); 
 			$field->attr('value', 1); 
+			$field->collapsed = $this->required ? Inputfield::collapsedNo : Inputfield::collapsedYes; 
 			$field->attr('checked', $this->required ? 'checked' : ''); 
-			$field->collapsed = self::collapsedBlank; 
 			$field->description = $this->_("If checked, a value will be required for this field.");
 			$fields->append($field); 
 		}

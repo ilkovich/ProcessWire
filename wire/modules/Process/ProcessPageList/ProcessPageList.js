@@ -317,7 +317,7 @@ $(document).ready(function() {
 
 				var processChildren = function(data) {
 
-					if(data.error) {
+					if(data && data.error) {
 						alert(data.message); 
 						$loading.hide();
 						ignoreClicks = false;
@@ -416,7 +416,7 @@ $(document).ready(function() {
 			 */
 			function listChild(child) {
 
-				var $li = $("<div></div>").data('pageId', child.id).addClass('PageListItem'); 
+				var $li = $("<div></div>").data('pageId', child.id).addClass('PageListItem').addClass('PageListTemplate_' + child.template); 
 				var $a = $("<a></a>")
 					.attr('href', '#')
 					.attr('title', child.path)
@@ -652,7 +652,7 @@ $(document).ready(function() {
 						$root.removeClass('PageListSorting');
 					}); 
 
-					if(data.error) {
+					if(data && data.error) {
 						alert(data.message); 
 					}
 

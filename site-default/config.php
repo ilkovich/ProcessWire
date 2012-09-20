@@ -136,6 +136,26 @@ $config->maxUrlSegments = 4;
 $config->dbLowercaseTables = true; 
 
 /**
+ * Order that variables with the $input API var are handled when you access $input->var
+ *
+ * This does not affect the dedicated $input->get/post/cookie/whitelist variables/functions. 
+ * Possible values are a combination of: "get post cookie whitelist" in any order, separated by 1 space.
+ * To disable $input->var from considering get/post/cookie, make wireInputOrder blank.
+ *
+ */
+$config->wireInputOrder = 'get post'; 
+
+/**
+ * Default ImageSizer options, as used by $page->image->size(w, h), for example. 
+ *
+ */
+$config->imageSizerOptions = array(
+	'upscaling' => true,
+	'cropping' => true, 
+	'quality' => 90,
+	);
+
+/**
  * Optional 'set names utf8' for sites that need it (this option is deprecated)
  *
  * This may be used instead of the $config->dbCharset = 'utf8' option, and exists here only for

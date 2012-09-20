@@ -42,9 +42,11 @@ class InputfieldDatetime extends Inputfield {
 	public function init() {
 		$this->attr('type', 'text'); 
 		$this->attr('size', 25); 
+		$this->attr('placeholder', '');
 		$this->set('dateInputFormat', self::defaultDateInputFormat);
 		$this->set('timeInputFormat', '');
 		$this->set('datepicker', self::datepickerFocus); 
+		$this->set('yearRange', '');
 		$this->set('defaultToday', 0); 
 
 		if($this->languages) foreach($this->languages as $language) {
@@ -55,6 +57,21 @@ class InputfieldDatetime extends Inputfield {
 		}
 
 		parent::init();
+	}
+
+	/**
+	 * Called before the render method, from a hook in the Inputfield class
+	 *
+	 * We are overriding it here and checking for a datepicker, so that we can make sure 
+	 * jQuery UI is loaded before the InputfieldDatetime.js
+	 *
+	 */
+	public function hookRender($event) {
+		if($this->datepicker) {
+			wire('modules')->get('JqueryCore'); // Jquery Core required before Jquery UI
+			wire('modules')->get('JqueryUI'); 
+		} 
+		parent::hookRender($event); 
 	}
 
 	/**
@@ -112,6 +129,7 @@ class InputfieldDatetime extends Inputfield {
 
 		if(strlen($timeFormatJS)) $timeFormatJS = htmlspecialchars($timeFormatJS, ENT_QUOTES, 'UTF-8'); 
 		if(empty($value)) $value = '';
+		$yearRange = htmlspecialchars($this->yearRange, ENT_QUOTES, 'UTF-8'); 
 
 		$out = 	"\n<p>" . 
 			"<input " . $this->getAttributesString($attrs) . " " . 
@@ -120,9 +138,21 @@ class InputfieldDatetime extends Inputfield {
 			"data-timeformat='$timeFormatJS' " . 
 			"data-ts='$valueTS' " . 
 			"data-ampm='$ampm' " . 
+			(strlen($yearRange) ? "data-yearrange='$yearRange' " : '') . 
 			"/></p>"; 
 
 		return $out; 
+	}
+
+	/**
+	 * Render value for presentation, non-input
+	 *
+	 */
+	public function ___renderValue() {
+		$value = $this->attr('value'); 
+		if(!$value) return '';
+		$format = trim($this->dateInputFormat . ' ' . $this->timeInputFormat); 
+		return FieldtypeDatetime::formatDate($value, trim($format));
 	}
 
 	/**
@@ -161,6 +191,16 @@ class InputfieldDatetime extends Inputfield {
 		$f->addOption(self::datepickerFocus, $this->_('Date/time picker on field focus')); 
 		$f->addOption(self::datepickerInline, $this->_('Inline date picker always visible (no time picker)')); 
 		$f->attr('value', (int) $this->datepicker); 
+		$inputfields->append($f);
+
+		$f = $this->modules->get("InputfieldText");
+		$f->attr('name', 'yearRange');
+		$f->attr('value', $this->yearRange); 
+		$f->attr('size', 10);
+		$f->label = $this->_('Date Picker Year Range');
+		$f->description = $this->_('When the date picker is used, it has a selectable year range minus and plus 10 years from the current year. To extend or reduce that, specify the quantity of years before and after [current year] in this format: "-30:+20", which would show 30 years before now and 20 years after now.'); 
+		$f->notes = $this->_('Default when no value present is "-10:+10" which shows a date picker year range 10 years before now, and 10 years after now.'); 
+		$f->collapsed = Inputfield::collapsedBlank;
 		$inputfields->append($f);
 
 		$fieldset = $this->modules->get('InputfieldFieldset'); 
@@ -238,7 +278,17 @@ class InputfieldDatetime extends Inputfield {
 		if($this->defaultToday) $f->attr('checked', 'checked'); 
 		$f->label = $this->_("Default to today's date?");
 		$f->description = $this->_("If checked, this field will hold the current date when no value is entered."); // Default today description
+		$f->columnWidth = 50;
 		$inputfields->append($f);
+
+		$field = $this->modules->get('InputfieldText');
+		$field->setAttribute('name', 'placeholder');
+		$field->label = $this->_('Placeholder Text');
+		$field->setAttribute('value', $this->attr('placeholder'));
+		$field->description = $this->_('Optional placeholder text that appears in the field when blank.');
+		$field->columnWidth = 50;
+		$inputfields->append($field);
+
 
 		return $inputfields; 
 	}

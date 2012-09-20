@@ -269,6 +269,7 @@ class PageFinder extends Wire {
 					} else {
 
 						$q->set('field', $field); // original field if required by the fieldtype
+						$q->set('selector', $selector); // original selector if required by the fieldtype
 						$q = $fieldtype->getMatchQuery($q, $tableAlias, $subfield, $selector->operator, $value); 
 
 						if(count($q->select)) $query->select($q->select); 
@@ -656,7 +657,7 @@ class PageFinder extends Wire {
 					throw new WireException("Operator '{$selector->operator}' is not yet supported for fields native to pages table"); 
 
 				$value = $this->db->escape_string($value); 
-				$s = "pages." . $field . $selector->operator . (ctype_digit("$value") ? (int) $value : "'$value'");
+				$s = "pages." . $field . $selector->operator . ((ctype_digit("$value") && $field != 'name') ? ((int) $value) : "'$value'");
 
 				if($selector->not) $s = "NOT ($s)";
 				if($selector->operator == '!=' || $selector->not) {
@@ -684,7 +685,22 @@ class PageFinder extends Wire {
 
 		static $cnt = 0; 
 
-		$parent_id = (int) $selector->value;
+		$parent_id = $selector->value;
+
+		if(!ctype_digit("$parent_id")) {
+			// parent_id is a path, convert a path to a parent
+			$parent = new NullPage();
+			$path = wire('sanitizer')->path($parent_id);
+			if($path) $parent = wire('pages')->get('/' . trim($path, '/') . '/');
+			$parent_id = $parent->id;
+			if(!$parent_id) {
+				$query->select("1>2"); // force the query to fail
+				return;
+			}
+		}
+
+		$parent_id = (int) $parent_id;
+
 		$cnt++;
 
 		if($parent_id == 1) {
@@ -693,7 +709,7 @@ class PageFinder extends Wire {
 				// homepage is only page that can match not having a has_parent of 1
 				$query->where("pages.id=1"); 
 			} else {
-				// no different from not having a has_parent, so we ignore it since rootLevel pages aren't indexed for this
+				// no different from not having a has_parent, so we ignore it 
 			}
 			return; 
 		}
@@ -706,14 +722,10 @@ class PageFinder extends Wire {
 			$query->where("$table.pages_id IS NULL"); 
 		} 
 
-
 		$query->$joinType(
 			"pages_parents AS $table ON (" . 
-				"$table.pages_id=pages.parent_id " . 
-				"AND (" . 
-					"$table.parents_id=$parent_id " . 
-					"OR $table.pages_id=$parent_id " . 
-				")" . 
+				"($table.pages_id=pages.id OR $table.pages_id=pages.parent_id) " . 
+				"AND ($table.parents_id=$parent_id OR $table.pages_id=$parent_id) " . 
 			")"
 		); 
 	}

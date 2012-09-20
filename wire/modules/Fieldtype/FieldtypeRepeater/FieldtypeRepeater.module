@@ -1047,6 +1047,20 @@ class FieldtypeRepeater extends Fieldtype implements ConfigurableModule {
 	}
 
 	/**
+	 * Create a cloned copy of Field
+	 *
+	 */
+	public function ___cloneField(Field $field) {
+		throw new WireException("Sorry, repeater fields are not currently cloneable."); 	
+		/*	
+		$field = parent::___cloneField($field); 
+		$field->parent_id = null;
+		$field->template_id = null;
+		return $field; 
+		*/
+	}
+
+	/**
 	 * Return configuration fields definable for each FieldtypePage
 	 *
 	 */
@@ -1095,6 +1109,7 @@ class FieldtypeRepeater extends Fieldtype implements ConfigurableModule {
 
 		foreach(wire('fields') as $f) {
 			if($template->fieldgroup->has($f)) continue;
+			if($f->type instanceof FieldtypeRepeater) continue; 
 			if(($f->flags & Field::flagPermanent) && !wire('config')->advanced) continue;
 			$name = $f->name;
 			if($f->flags & Field::flagSystem) $name .= "*";
@@ -1237,6 +1252,7 @@ class FieldtypeRepeater extends Fieldtype implements ConfigurableModule {
 			$this->message("Removed page {$page->path}", Notice::debug); 
 		}
 	}
+
 }
 
 /**

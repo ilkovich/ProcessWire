@@ -12,6 +12,17 @@
  * http://www.processwire.com
  * http://www.ryancramer.com
  *
+ *
+ * @property string $url URL to the file on the server	
+ * @property string $filename full disk path to the file on the server
+ * @property string $name Returns the filename without the path (basename)
+ * @property string $description value of the file's description field (text). Note you can also set this property directly.
+ * @property string $ext file's extension (i.e. last 3 or so characters)
+ * @property int $filesize file size, number of bytes
+ * @property string $filesizeStr file size as a formatted string
+ * @property Pagefiles $pagefiles the WireArray that contains this file
+ * @property Page $page the $page that contains this file
+ *
  */
 
 class Pagefile extends WireData {
@@ -50,6 +61,8 @@ class Pagefile extends WireData {
 	public function setFilename($filename) {
 
 		$basename = basename($filename); 
+
+		if(DIRECTORY_SEPARATOR != '/') $filename = str_replace('\\' . $basename, '/' . $basename, $filename); // To correct issue with XAMPP in Windows
 	
 		if($basename != $filename && strpos($filename, $this->pagefiles->path()) !== 0) {
 			$this->install($filename); 

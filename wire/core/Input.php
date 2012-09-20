@@ -26,6 +26,9 @@
  *
  * Each WireInputData is not instantiated unless specifically asked for. 
  *
+ *
+ * @link http://processwire.com/api/variables/input/ Offical $input API variable Documentation
+ *
  */
 class WireInputData implements ArrayAccess, IteratorAggregate, Countable {
 
@@ -115,6 +118,10 @@ class WireInputData implements ArrayAccess, IteratorAggregate, Countable {
 /**
  * Manages the group of GET, POST, COOKIE and whitelist vars, each of which is a WireInputData object.
  *
+ * @link http://processwire.com/api/variables/input/ Offical $input API variable Documentation
+ *
+ * @property string[] $urlSegments Retrieve all URL segments (array). This requires url segments are enabled on the template of the requested page. You can turn it on or off under the url tab when editing a template.
+ *
  */
 class WireInput {
 
@@ -199,12 +206,11 @@ class WireInput {
 	/**
 	 * Retrieve the URL segment with index $num
 	 *
-	 * Note that the index is 1 based (not 0 based)
+	 * Note that the index is 1 based (not 0 based).
+	 * The maximum segments allowed can be adjusted in your /site/config.php.
 	 *
-	 * Returns a blank string if the specified index is not found. 
-	 *
-	 * @param int $num 
-	 * @return string
+	 * @param int $num Retrieve the $n'th URL segment (integer).
+	 * @return string Returns a blank string if the specified index is not found
 	 *
 	 */
 	public function urlSegment($num = 1) {
@@ -283,14 +289,22 @@ class WireInput {
 			return $this->urlSegment($num);
 		}
 
-
 		$value = null;
 		$gpc = array('get', 'post', 'cookie', 'whitelist'); 
+
 		if(in_array($key, $gpc)) {
 			$value = $this->$key(); 
-        } else {
-            $value = $this->get($key);
-            $value = isset($value) ? $value : $this->post($key);
+		} else {
+			// Like PHP's $_REQUEST where accessing $input->var considers get/post/cookie/whitelist
+			// what it actually considers depends on what's set in the $config->wireInputOrder variable
+			$order = (string) wire('config')->wireInputOrder; 
+			if(!$order) return null;
+			$types = explode(' ', $order); 
+			foreach($types as $t) {
+				if(!in_array($t, $gpc)) continue; 	
+				$value = $this->$t($key); 
+				if(!is_null($value)) break;
+			}
 		}
 		return $value; 
 	}

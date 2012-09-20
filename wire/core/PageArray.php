@@ -236,7 +236,7 @@ class PageArray extends WireArray {
 	 * @return PageArray reference to current instance.
 	 */
 	public function setTotal($total) { 
-		$this->numTotal = $total; 
+		$this->numTotal = (int) $total; 
 		return $this;
 	}	
 
@@ -339,6 +339,22 @@ class PageArray extends WireArray {
 	protected function filterData($selectors, $not = false) {
 		if(is_string($selectors) && $selectors[0] === '/') $selectors = "path=$selectors";
 		return parent::filterData($selectors, $not); 
+	}
+
+	/**
+	 * Get the vaule of $property from $item
+	 *
+	 * Used by the WireArray::sort method to retrieve a value from a Wire object. 
+	 * If output formatting is on, we turn it off to ensure that the sorting
+	 * is performed without output formatting.
+	 *
+	 * @param Wire $item
+	 * @param string $property
+	 * @return mixed
+	 *
+	 */
+	protected function getItemPropertyValue(Wire $item, $property) {
+		return $item->getUnformatted($property); 
 	}
 
 	/**

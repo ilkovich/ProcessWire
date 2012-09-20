@@ -687,11 +687,11 @@ class WireArray extends Wire implements IteratorAggregate, ArrayAccess, Countabl
 
 		foreach($this as $item) {
 
-			$key = $item->$property; 
+			$key = $this->getItemPropertyValue($item, $property); 
 
 			// if item->property resolves to another Wire, then try to get the subProperty from that Wire (if it exists)
 			if($key instanceof Wire && $subProperty) {
-				$key = $key->$subProperty; 
+				$key = $this->getItemPropertyValue($key, $subProperty);
 			}
 
 			// check for items that resolve to blank
@@ -743,6 +743,22 @@ class WireArray extends Wire implements IteratorAggregate, ArrayAccess, Countabl
 	}
 
 	/**
+	 * Get the vaule of $property from $item
+	 *
+	 * Used by the WireArray::sort method to retrieve a value from a Wire object. 
+	 * Primarily here as a template method so that it can be overridden. 
+	 * Lets it prepare the Wire for any states needed for sorting. 
+	 *
+	 * @param Wire $item
+	 * @param string $property
+	 * @return mixed
+	 *
+	 */
+	protected function getItemPropertyValue(Wire $item, $property) {
+		return $item->$property; 
+	}
+
+	/**
 	 * Filter out Wires that don't match the selector. 
 	 * 
 	 * This is applicable to and destructive to the WireArray.
@@ -770,21 +786,14 @@ class WireArray extends Wire implements IteratorAggregate, ArrayAccess, Countabl
 
 				if($selector->field === 'sort') {
 					$sort = $selector->value; 
-					break;
 
 				} else if($selector->field === 'limit') {
 					$limit = (int) $selector->value; 
-					break;
-				}
 
-				$value = $item->{$selector->field}; 
-
-				if($not === $selector->matches("$value")) {
+				} else if($not === $selector->matches($item)) {
 					unset($this->data[$key]); 
-					break;
 				}	
 			}
-
 		}
 
 		if($sort) $this->sort($sort); 

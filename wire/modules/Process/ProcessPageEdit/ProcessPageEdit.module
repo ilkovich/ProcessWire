@@ -154,9 +154,12 @@ class ProcessPageEdit extends Process {
 		} else {
 
 			$this->processInput($this->form); 
+			$debug = wire('config')->debug; 
+			$numChanges = 0;
 
 			foreach(array_unique($this->page->getChanges()) as $change) {
-				$this->message(sprintf($this->_('Change: %s'), $change)); // Message shown for each changed field
+				if($debug) $this->message(sprintf($this->_('Change: %s'), $change)); // Message shown for each changed field
+				$numChanges++;
 			}
 
 			$formErrors = 0; 
@@ -164,14 +167,18 @@ class ProcessPageEdit extends Process {
 				if($notice instanceof NoticeError) $formErrors++; 
 			}
 
+			$isUnpublished = $this->page->is(Page::statusUnpublished); 
+
 			if($this->input->post->submit_publish || $this->input->post->submit_save) {
 
 				try {
-					if($this->input->post->submit_publish && $this->page->is(Page::statusUnpublished) && $this->page->publishable()) {
+					$numChanges = $numChanges > 0 ? ' (' . sprintf($this->_n('%d change', '%d changes', $numChanges) . ')', $numChanges) : '';
+					if($this->input->post->submit_publish && $isUnpublished && $this->page->publishable() && !$formErrors) {
 						$this->page->removeStatus(Page::statusUnpublished);
-						$message = sprintf($this->_('Published Page: %s'), $this->page->path); // Message shown when page is published
+						$message = sprintf($this->_('Published Page: %s'), $this->page->path) . $numChanges; // Message shown when page is published
 					} else {
-						$message = sprintf($this->_('Saved Page: %s'), $this->page->path); // Message shown when page is saved
+						$message = sprintf($this->_('Saved Page: %s'), $this->page->path) . $numChanges; // Message shown when page is saved
+						if($isUnpublished && $formErrors && $this->input->post->submit_publish) $message .= ' - ' . $this->_('Cannot be published until errors are corrected'); 
 					}
 					
 					$this->page->save();
@@ -213,12 +220,13 @@ class ProcessPageEdit extends Process {
 		$form->attr('action', './?id=' . $this->id . ($this->input->get->modal ? "&modal=1" : '')); 
 		$form->attr('method', 'post'); 
 		$form->attr('enctype', 'multipart/form-data'); 
-		$form->attr('class', 'template_' . $this->page->template . ' class_' . $this->page->className); 
+		$form->attr('class', 'ui-helper-clearfix template_' . $this->page->template . ' class_' . $this->page->className); 
 		$form->attr('autocomplete', 'off'); 
 
 		if($this->page->template->nameContentTab) {
 			// name
 			$field = $this->modules->get('InputfieldPageName');
+			$field->attr('name', '_pw_page_name'); 
 			$field->attr('value', $this->page->name); 
 			$field->required = true; 
 			if(!$this->page->editable('name')) $field->attr('disabled', 'disabled'); 
@@ -407,6 +415,7 @@ class ProcessPageEdit extends Process {
 		if($this->page->id > 1 && !$this->page->template->nameContentTab) {
 			$field = $this->modules->get('InputfieldPageName');
 			$field->attr('value', $this->page->name); 
+			$field->attr('name', '_pw_page_name');
 			if($field->value && !$this->page->editable('name')) $field->attr('disabled', 'disabled'); 
 			$field->required = true; 
 			if($this->page->parent) $field->parentPage = $this->page->parent;
@@ -575,7 +584,7 @@ class ProcessPageEdit extends Process {
 	 * Build the Settings > Roles fieldset on the Page Edit form 
 	 *
 	 */
-	protected function buildFormRoles() {
+	protected function ___buildFormRoles() {
 
 		$field = $this->modules->get("InputfieldMarkup"); 
 		$field->label = $this->_('Who can access this page?'); // Roles information field label
@@ -667,6 +676,7 @@ class ProcessPageEdit extends Process {
 		foreach($form as $inputfield) {
 
 			$name = $inputfield->attr('name'); 
+			if($name == '_pw_page_name') $name = 'name';
 			if(in_array($name, $skipFields)) continue; 
 			if(!$this->page->editable($name)) continue; 
 			
@@ -950,7 +960,7 @@ class ProcessPageEdit extends Process {
 			return $templates;
 		}
 
-		foreach($this->fuel('templates') as $template) {
+		foreach(wire('templates') as $template) {
 
 			if(isset($templates[$template->id])) continue; 
 

@@ -15,6 +15,42 @@
  * http://www.processwire.com
  * http://www.ryancramer.com
  *
+ * @link http://processwire.com/api/variables/page/ Offical $page Documentation
+ * @link http://processwire.com/api/selectors/ Official Selectors Documentation
+ *
+ * @property int $id The numbered ID of the current page
+ * @property string $name The name assigned to the page, as it appears in the URL
+ * @property string $title The page's title (headline) text
+ * @property string $path The page's URL path from the homepage (i.e. /about/staff/ryan/)
+ * @property string $url The page's URL path from the server's document root (may be the same as the $page->path)
+ * @property string $httpUrl Same as $page->url, except includes protocol (http or https) and hostname.
+ * @property Page $parent The parent Page object or a NullPage if there is no parent.
+ * @property int $parent_id The numbered ID of the parent page or 0 if homepage or NullPage.
+ * @property PageArray $parents All the parent pages down to the root (homepage). Returns a PageArray.
+ * @property Page $rootParent The parent page closest to the homepage (typically used for identifying a section)
+ * @property Template $template The Template object this page is using
+ * @property FieldsArray $fields All the Fields assigned to this page (via it's template, same as $page->template->fields). Returns a FieldsArray.
+ * @property int $numChildren The number of children (subpages) this page has, much faster than count($page->children). 
+ * @property PageArray $children All the children (subpages) of this page. Returns a PageArray. See also $page->children($selector).
+ * @property Page $child The first child of this page. Returns a Page. See also $page->child($selector).
+ * @property PageArray $siblings All the sibling pages of this page. Returns a PageArray. See also $page->siblings($selector).
+ * @property Page $next This page's next sibling page, or NullPage if it is the last sibling. See also $page->next($pageArray).
+ * @property Page $prev This page's previous sibling page, or NullPage if it is the first sibling. See also $page->prev($pageArray).
+ * @property string $created Unix timestamp of when the page was created
+ * @property string $modified Unix timestamp of when the page was last modified
+ * @property User $createdUser The user that created this page. Returns a User or a NullUser.
+ * @property User $modifiedUser The user that last modified this page. Returns a User or a NullUser.
+ * 
+ * @method string render() Returns rendered page markup. echo $page->render();
+ * @method bool viewable() Returns true if the page is viewable by the current user, false if not. 
+ * @method bool editable($field) Returns true if the page is editable by the current user, false if not. Optionally specify a field to see if that field is editable.
+ * @method bool publishable() Returns true if the page is publishable by the current user, false if not. 
+ * @method bool listable() Returns true if the page is listable by the current user, false if not. 
+ * @method bool deleteable() Returns true if the page is deleteable by the current user, false if not. 
+ * @method bool addable($pageToAdd) Returns true if the current user can add children to the page, false if not. Optionally specify the page to be added for additional access checking. 
+ * @method bool moveable($newParent) Returns true if the current user can move this page. Optionally specify the new parent to check if the page is moveable to that parent. 
+ * @method bool sortable() Returns true if the current user can change the sort order of the current page (within the same parent). 
+ *
  */
 
 class Page extends WireData {
@@ -69,6 +105,12 @@ class Page extends WireData {
 	 *
 	 */
 	private $parentPrevious; 
+
+	/**
+	 * The previous name used by this page, if it changed during runtime.
+	 *
+	 */
+	private $namePrevious; 
 
 	/**
 	 * Reference to the Page's template file, used for output. Instantiated only when asked for. 
@@ -275,7 +317,10 @@ class Page extends WireData {
 				if($this->isLoaded) {
 					$beautify = empty($this->settings[$key]); 
 					$value = $this->fuel('sanitizer')->pageName($value, $beautify); 
-					if($this->settings[$key] !== $value) $this->trackChange($key); 
+					if($this->settings[$key] !== $value) {
+						if($this->settings[$key] && empty($this->namePrevious)) $this->namePrevious = $this->settings[$key];
+						$this->trackChange($key); 
+					}
 				}
 				$this->settings[$key] = $value; 
 				break;
@@ -440,6 +485,7 @@ class Page extends WireData {
 			case 'template':
 			case 'templatePrevious':
 			case 'parentPrevious':
+			case 'namePrevious':
 			case 'isLoaded':
 			case 'isNew':
 			case 'pageNum':
@@ -595,6 +641,11 @@ class Page extends WireData {
 		}
 		if($this->settings['status'] != $value) $this->trackChange('status');
 		$this->settings['status'] = $value;
+		if($value & Page::statusDeleted) {
+			// disable any instantiated filesManagers after page has been marked deleted
+			// example: uncache method polls filesManager
+			$this->filesManager = null; 
+		}
 	}
 
 	/**
@@ -689,7 +740,11 @@ class Page extends WireData {
 		if(!$this->numChildren) return new PageArray();
 		if($selector) $selector .= ", ";
 		$selector = "parent_id={$this->id}, $selector"; 
-		if(strpos($selector, 'sort=') === false) $selector .= "sort={$this->sortfield}"; 
+		if(strpos($selector, 'sort=') === false) {
+			$sortfield = $this->template->sortfield;
+			if(!$sortfield) $sortfield = $this->sortfield;
+			$selector .= "sort=$sortfield";
+		}
 		return $this->fuel('pages')->find(trim($selector, ", "), $options); 
 	}
 
@@ -1226,6 +1281,7 @@ class Page extends WireData {
 	 *
 	 */
 	public function filesManager() {
+		if($this->is(Page::statusDeleted)) return null;
 		if(is_null($this->filesManager)) $this->filesManager = new PagefilesManager($this); 
 		return $this->filesManager; 
 	}
